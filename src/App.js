@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import "@aws-amplify/ui-react/styles.css";
-import { Storage } from 'aws-amplify';
+import { Amplify } from 'aws-amplify';
 import {
   Button,
   Flex,
@@ -18,6 +18,18 @@ import {
   deleteNote as deleteNoteMutation,
 } from "./graphql/mutations";
 import { generateClient } from 'aws-amplify/api';
+import { uploadData, getUrl, remove, list } from 'aws-amplify/storage';
+import { StorageImage } from '@aws-amplify/ui-react-storage';
+import '@aws-amplify/ui-react/styles.css';
+
+try {
+  const result = await list({
+    prefix: 'photos/'
+  });
+} catch (error) {
+  console.log(error);
+}
+
 
 const client = generateClient();
 
@@ -34,9 +46,31 @@ const App = ({ signOut }) => {
     await Promise.all(
       notesFromAPI.map(async (note) => {
         if (note.image) {
-          const url = await Storage.get(note.name);
-          note.image = url;
+          const getUrlResult = await getUrl({
+            key: note.image,
+          });
+
+          // try {
+          //   const response = await list({
+          //     prefix: 'photos/',
+          //     options: {
+          //       listAll: true
+          //     }
+          //   });
+          //   console.log(response)
+          //   // render list items from response.items
+          // } catch (error) {
+          //   console.log('Error ', error);
+          // }
+    
+          // note.image = getUrlResult.url.toString();
         }
+        // console.log(await Amplify.Storage.list({
+        //       prefix: 'photos/',
+        //       options: {
+        //         listAll: true
+        //       }
+        //     }).result)
         return note;
       })
     );
@@ -52,7 +86,20 @@ const App = ({ signOut }) => {
       description: form.get("description"),
       image: image.name,
     };
-    if (!!data.image) await Storage.put(data.name, image);
+    if (!!data.image) 
+    try {
+      const result = await uploadData({
+        key: data.name,
+        data: image,
+        options: {
+          accessLevel: 'guest', // defaults to `guest` but can be 'private' | 'protected' | 'guest'
+        }
+      }).result;
+      console.log('Succeeded: ', result);
+    } catch (error) {
+      console.log('Error : ', error);
+    }
+
     await client.graphql({
       query: createNoteMutation,
       variables: { input: data },
@@ -64,18 +111,26 @@ const App = ({ signOut }) => {
   async function deleteNote({ id, name }) {
     const newNotes = notes.filter((note) => note.id !== id);
     setNotes(newNotes);
-    await Storage.remove(name);
+    try {
+      await remove({ key: name });
+    } catch (error) {
+      console.log('Error ', error);
+    }
     await client.graphql({
       query: deleteNoteMutation,
       variables: { input: { id } },
     });
   }
 
+  const DefaultStorageImageExample = () => {
+  return <StorageImage alt="list image" imgKey="BAD_AD.jpg" accessLevel="guest" />;
+};
+
   return (
     <View className="App">
       <Heading level={1}>My Notes App</Heading>
       <View as="form" margin="3rem 0" onSubmit={createNote}>
-        <Flex direction="row" justifyContent="center">
+        <Flex direction="row" justifyContent="center" alignItems="end">
           <TextField
             name="name"
             placeholder="Note Name"
@@ -98,6 +153,7 @@ const App = ({ signOut }) => {
             type="file"
             style={{ alignSelf: "end" }}
           />
+          {/* <DefaultStorageImageExample/> */}
           <Button type="submit" variation="primary">
             Create Note
           </Button>
