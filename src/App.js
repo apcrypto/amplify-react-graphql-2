@@ -17,7 +17,7 @@ import {
   deleteNote as deleteNoteMutation,
 } from "./graphql/mutations";
 import { generateClient } from 'aws-amplify/api';
-import { uploadData, getUrl, remove, list, getProperties } from 'aws-amplify/storage';
+import { uploadData, getUrl, remove, list } from 'aws-amplify/storage';
 import '@aws-amplify/ui-react/styles.css';
 
 const client = generateClient();
@@ -26,7 +26,6 @@ const App = ({ signOut }) => {
   const [notes, setNotes] = useState([]);
 
   useEffect(() => {
-    console.log(notes)
     fetchNotes();
   }, []);
 
@@ -36,13 +35,10 @@ const App = ({ signOut }) => {
     await Promise.all(
       notesFromAPI.map(async (note) => {
         if (note.image) {
-          const getUrlResult = await getUrl({
-            key: note.image,
-          });
 
           try {
             const result = await list({
-              key: 'test',
+              key: note.name,
               options: {
                 accessLevel: 'private', // defaults to `guest` but can be 'private' | 'protected' | 'guest'
               }
@@ -51,8 +47,6 @@ const App = ({ signOut }) => {
           } catch (error) {
             console.log('Error ', error);
           }
-    
-          // note.image = getUrlResult.url.toString();
         }
 
         return note;
@@ -94,12 +88,15 @@ const App = ({ signOut }) => {
 
   async function deleteNote({ id, name }) {
     const newNotes = notes.filter((note) => note.id !== id);
+    const noteToRemove = notes.find((note) => note.id == id)
     setNotes(newNotes);
+    
     try {
-      await remove({ key: name });
+      await remove({ key: noteToRemove.image, options: { accessLevel: 'private' }});  
     } catch (error) {
       console.log('Error ', error);
     }
+
     await client.graphql({
       query: deleteNoteMutation,
       variables: { input: { id } },
@@ -153,8 +150,8 @@ const App = ({ signOut }) => {
         <Text as="span">{note.description}</Text>
         {note.image && (
           <Image
-            src={notes.name}
-            alt={`visual aid for ${notes.name}`}
+            src={note.name}
+            alt={`visual aid for ${note.name}`}
             style={{ width: 400 }}
           />
         )}
