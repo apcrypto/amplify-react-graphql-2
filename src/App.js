@@ -5,7 +5,6 @@ import {
   Button,
   Flex,
   Heading,
-  Image,
   Text,
   TextField,
   View,
@@ -19,6 +18,7 @@ import {
 import { generateClient } from 'aws-amplify/api';
 import { uploadData, getUrl, remove, list } from 'aws-amplify/storage';
 import '@aws-amplify/ui-react/styles.css';
+import { StorageImage } from '@aws-amplify/ui-react-storage';
 
 const client = generateClient();
 
@@ -32,15 +32,15 @@ const App = ({ signOut }) => {
   async function fetchNotes() {
     const apiData = await client.graphql({ query: listNotes });
     const notesFromAPI = apiData.data.listNotes.items;
+
     await Promise.all(
       notesFromAPI.map(async (note) => {
         if (note.image) {
-
           try {
             const result = await list({
               key: note.name,
               options: {
-                accessLevel: 'private', // defaults to `guest` but can be 'private' | 'protected' | 'guest'
+                accessLevel: 'private',
               }
             });
             console.log('File Properties ', result);
@@ -48,7 +48,6 @@ const App = ({ signOut }) => {
             console.log('Error ', error);
           }
         }
-
         return note;
       })
     );
@@ -64,13 +63,14 @@ const App = ({ signOut }) => {
       description: form.get("description"),
       image: image.name,
     };
+
     if (!!data.image) 
     try {
       const result = await uploadData({
         key: data.image,
         data: image,
         options: {
-          accessLevel: 'private', // defaults to `guest` but can be 'private' | 'protected' | 'guest'
+          accessLevel: 'private', 
         }
       }).result;
       console.log('Succeeded: ', result);
@@ -86,11 +86,11 @@ const App = ({ signOut }) => {
     event.target.reset();
   }
 
-  async function deleteNote({ id, name }) {
+  async function deleteNote({ id }) {
     const newNotes = notes.filter((note) => note.id !== id);
     const noteToRemove = notes.find((note) => note.id == id)
     setNotes(newNotes);
-    
+
     try {
       await remove({ key: noteToRemove.image, options: { accessLevel: 'private' }});  
     } catch (error) {
@@ -101,6 +101,10 @@ const App = ({ signOut }) => {
       query: deleteNoteMutation,
       variables: { input: { id } },
     });
+  }
+
+  const  StorageFile = ({ note }) => {
+    return <StorageImage accessLevel="private" alt={`visual aid for ${note.name}`} imgKey={`${note.image}` } />;
   }
 
   return (
@@ -148,13 +152,7 @@ const App = ({ signOut }) => {
           {note.name}
         </Text>
         <Text as="span">{note.description}</Text>
-        {note.image && (
-          <Image
-            src={note.name}
-            alt={`visual aid for ${note.name}`}
-            style={{ width: 400 }}
-          />
-        )}
+          <StorageFile note={note} />
         <Button variation="link" onClick={() => deleteNote(note)}>
           Delete note
         </Button>
