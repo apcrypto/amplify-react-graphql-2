@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import "@aws-amplify/ui-react/styles.css";
-import { Amplify } from 'aws-amplify';
 import {
   Button,
   Flex,
@@ -18,18 +17,8 @@ import {
   deleteNote as deleteNoteMutation,
 } from "./graphql/mutations";
 import { generateClient } from 'aws-amplify/api';
-import { uploadData, getUrl, remove, list } from 'aws-amplify/storage';
-import { StorageImage } from '@aws-amplify/ui-react-storage';
+import { uploadData, getUrl, remove, list, getProperties } from 'aws-amplify/storage';
 import '@aws-amplify/ui-react/styles.css';
-
-try {
-  const result = await list({
-    prefix: 'photos/'
-  });
-} catch (error) {
-  console.log(error);
-}
-
 
 const client = generateClient();
 
@@ -37,6 +26,7 @@ const App = ({ signOut }) => {
   const [notes, setNotes] = useState([]);
 
   useEffect(() => {
+    console.log(notes)
     fetchNotes();
   }, []);
 
@@ -50,27 +40,21 @@ const App = ({ signOut }) => {
             key: note.image,
           });
 
-          // try {
-          //   const response = await list({
-          //     prefix: 'photos/',
-          //     options: {
-          //       listAll: true
-          //     }
-          //   });
-          //   console.log(response)
-          //   // render list items from response.items
-          // } catch (error) {
-          //   console.log('Error ', error);
-          // }
+          try {
+            const result = await list({
+              key: 'test',
+              options: {
+                accessLevel: 'private', // defaults to `guest` but can be 'private' | 'protected' | 'guest'
+              }
+            });
+            console.log('File Properties ', result);
+          } catch (error) {
+            console.log('Error ', error);
+          }
     
           // note.image = getUrlResult.url.toString();
         }
-        // console.log(await Amplify.Storage.list({
-        //       prefix: 'photos/',
-        //       options: {
-        //         listAll: true
-        //       }
-        //     }).result)
+
         return note;
       })
     );
@@ -89,10 +73,10 @@ const App = ({ signOut }) => {
     if (!!data.image) 
     try {
       const result = await uploadData({
-        key: data.name,
+        key: data.image,
         data: image,
         options: {
-          accessLevel: 'guest', // defaults to `guest` but can be 'private' | 'protected' | 'guest'
+          accessLevel: 'private', // defaults to `guest` but can be 'private' | 'protected' | 'guest'
         }
       }).result;
       console.log('Succeeded: ', result);
@@ -122,10 +106,6 @@ const App = ({ signOut }) => {
     });
   }
 
-  const DefaultStorageImageExample = () => {
-  return <StorageImage alt="list image" imgKey="BAD_AD.jpg" accessLevel="guest" />;
-};
-
   return (
     <View className="App">
       <Heading level={1}>My Notes App</Heading>
@@ -153,7 +133,6 @@ const App = ({ signOut }) => {
             type="file"
             style={{ alignSelf: "end" }}
           />
-          {/* <DefaultStorageImageExample/> */}
           <Button type="submit" variation="primary">
             Create Note
           </Button>
@@ -174,7 +153,7 @@ const App = ({ signOut }) => {
         <Text as="span">{note.description}</Text>
         {note.image && (
           <Image
-            src={note.image}
+            src={notes.name}
             alt={`visual aid for ${notes.name}`}
             style={{ width: 400 }}
           />
